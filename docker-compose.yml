@@ -1,5 +1,81 @@
 services:
 
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_USER: produits_user
+      POSTGRES_PASSWORD: produits_pass
+      POSTGRES_DB: produits_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U produits_user -d produits_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ci_network
+
+  api:
+    build: .
+    container_name: api
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://produits_user:produits_pass@postgres:5432/produits_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ci_network
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    networks:
+      - ci_network
+
+  sonar-postgres:
+    image: postgres:15-alpine
+    container_name: sonar-postgres
+    environment:
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: sonar
+      POSTGRES_DB: sonarqube
+    volumes:
+      - sonar_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sonar -d sonarqube"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ci_network
+
+  sonarqube:
+    image: sonarqube:community
+    container_name: sonarqube
+    ports:
+      - "9000:9000"
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://sonar-postgres:5432/sonarqube
+      SONAR_JDBC_USERNAME: sonar
+      SONAR_JDBC_PASSWORD: sonar
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_logs:/opt/sonarqube/logs
+      - sonarqube_extensions:/opt/sonarqube/extensions
+    depends_on:
+      sonar-postgres:
+        condition: service_healthy
+    networks:
+      - ci_network
+
   jenkins:
     image: jenkins/jenkins:lts
     container_name: jenkins
@@ -12,23 +88,13 @@ services:
     networks:
       - ci_network
 
-  sonarqube:
-    image: sonarqube:community
-    container_name: sonarqube
-    ports:
-      - "9000:9000"
-    environment:
-      - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
-    volumes:
-      - sonarqube_data:/opt/sonarqube/data
-      - sonarqube_logs:/opt/sonarqube/logs
-    networks:
-      - ci_network
-
 volumes:
-  jenkins_home:
+  postgres_data:
+  sonar_postgres_data:
   sonarqube_data:
   sonarqube_logs:
+  sonarqube_extensions:
+  jenkins_home:
 
 networks:
   ci_network:

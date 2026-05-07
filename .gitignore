@@ -1,8 +1,3 @@
-# Claude Code
-.claude/
-.claude 
-claude 
-
 # Environnement virtuel Python
 venv/
 .venv/
@@ -28,6 +23,9 @@ htmlcov/
 # IDE
 .vscode/
 .idea/
+
+# Base de données locale (SQLite dev)
+*.db
 
 # OS
 .DS_Store

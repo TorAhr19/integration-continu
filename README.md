@@ -79,10 +79,17 @@ pip install -r requirements.txt
 ```
 
 ---
-
-## Lancer le serveur
+## Lancer les services
 
 ```bash
+docker compose up -d 
+```
+
+## Lancer Swagger
+
+```bash
+cd C:\XXX\XXX\XXX\integration-continu
+venv\Scripts\activate
 uvicorn app.main:app --reload
 ```
 

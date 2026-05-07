@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gestion des Produits</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { brand: { 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' } }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans">
+
+  <!-- Toast -->
+  <div id="toast" class="fixed top-5 right-5 z-50 hidden">
+    <div id="toast-body" class="flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium min-w-[260px]">
+      <span id="toast-icon" class="text-lg"></span>
+      <span id="toast-msg"></span>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="bg-white border-b border-gray-200 shadow-sm">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-brand-500 flex items-center justify-center">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold text-gray-900">Gestion des Produits</h1>
+          <p class="text-xs text-gray-400">API CRUD FastAPI</p>
+        </div>
+      </div>
+      <button onclick="openModal()" class="flex items-center gap-2 bg-brand-500 hover:bg-brand-600 active:bg-brand-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        Nouveau produit
+      </button>
+    </div>
+  </header>
+
+  <!-- Stats -->
+  <div class="max-w-6xl mx-auto px-6 py-6 grid grid-cols-3 gap-4">
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+      <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">Total produits</p>
+      <p id="stat-count" class="text-3xl font-bold text-gray-900 mt-1">–</p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+      <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">Valeur du stock</p>
+      <p id="stat-value" class="text-3xl font-bold text-gray-900 mt-1">–</p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+      <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">Unités en stock</p>
+      <p id="stat-units" class="text-3xl font-bold text-gray-900 mt-1">–</p>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <main class="max-w-6xl mx-auto px-6 pb-10">
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-gray-700">Liste des produits</h2>
+        <button onclick="loadProduits()" class="text-gray-400 hover:text-brand-500 transition-colors" title="Rafraîchir">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 4v5h5M20 20v-5h-5M4 9a9 9 0 0115.46-3M20 15a9 9 0 01-15.46 3"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Loading -->
+      <div id="loading" class="flex items-center justify-center py-16 text-gray-400 gap-2">
+        <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+        </svg>
+        <span class="text-sm">Chargement…</span>
+      </div>
+
+      <!-- Empty -->
+      <div id="empty" class="hidden flex flex-col items-center justify-center py-16 text-gray-400">
+        <svg class="w-12 h-12 mb-3 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+        </svg>
+        <p class="text-sm font-medium">Aucun produit</p>
+        <p class="text-xs mt-1">Cliquez sur "Nouveau produit" pour commencer</p>
+      </div>
+
+      <!-- Table body -->
+      <table id="table" class="hidden w-full text-sm">
+        <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+          <tr>
+            <th class="px-6 py-3 text-left font-medium">#</th>
+            <th class="px-6 py-3 text-left font-medium">Nom</th>
+            <th class="px-6 py-3 text-left font-medium">Description</th>
+            <th class="px-6 py-3 text-right font-medium">Prix</th>
+            <th class="px-6 py-3 text-right font-medium">Stock</th>
+            <th class="px-6 py-3 text-right font-medium">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tbody" class="divide-y divide-gray-50"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- Modal Ajout / Édition -->
+  <div id="modal" class="fixed inset-0 z-40 hidden">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="closeModal()"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md relative">
+        <div class="px-6 pt-6 pb-4 border-b border-gray-100">
+          <h3 id="modal-title" class="text-lg font-bold text-gray-900">Nouveau produit</h3>
+          <p class="text-sm text-gray-400 mt-0.5">Remplissez les informations du produit</p>
+        </div>
+        <form id="form" onsubmit="submitForm(event)" class="px-6 py-5 space-y-4">
+          <input type="hidden" id="edit-id" />
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">Nom <span class="text-red-400">*</span></label>
+            <input id="f-nom" type="text" required minlength="2" maxlength="100"
+              class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition"
+              placeholder="Ex: Clavier mécanique" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">Description <span class="text-red-400">*</span></label>
+            <textarea id="f-desc" required minlength="5" maxlength="255" rows="2"
+              class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition resize-none"
+              placeholder="Ex: Clavier RGB avec switches Cherry MX"></textarea>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1.5">Prix (€) <span class="text-red-400">*</span></label>
+              <input id="f-prix" type="number" required min="0.01" step="0.01"
+                class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition"
+                placeholder="0.00" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1.5">Stock <span class="text-red-400">*</span></label>
+              <input id="f-stock" type="number" required min="0" step="1"
+                class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition"
+                placeholder="0" />
+            </div>
+          </div>
+          <div class="flex gap-3 pt-2">
+            <button type="button" onclick="closeModal()"
+              class="flex-1 border border-gray-200 text-gray-600 hover:bg-gray-50 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors">
+              Annuler
+            </button>
+            <button type="submit" id="submit-btn"
+              class="flex-1 bg-brand-500 hover:bg-brand-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors">
+              Enregistrer
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm Delete Modal -->
+  <div id="confirm-modal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="closeConfirm()"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center relative">
+        <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+          </svg>
+        </div>
+        <h3 class="text-lg font-bold text-gray-900 mb-1">Supprimer le produit ?</h3>
+        <p id="confirm-name" class="text-sm text-gray-500 mb-6"></p>
+        <div class="flex gap-3">
+          <button onclick="closeConfirm()" class="flex-1 border border-gray-200 text-gray-600 hover:bg-gray-50 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors">
+            Annuler
+          </button>
+          <button onclick="confirmDelete()" class="flex-1 bg-red-500 hover:bg-red-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors">
+            Supprimer
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const API = 'http://127.0.0.1:8000';
+  let deleteTargetId = null;
+
+  // ---- Toast ----
+  function showToast(msg, ok = true) {
+    const el = document.getElementById('toast');
+    const body = document.getElementById('toast-body');
+    const icon = document.getElementById('toast-icon');
+    document.getElementById('toast-msg').textContent = msg;
+    body.className = `flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium min-w-[260px] ${ok ? 'bg-emerald-500' : 'bg-red-500'}`;
+    icon.textContent = ok ? '✓' : '✕';
+    el.classList.remove('hidden');
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.add('hidden'), 3000);
+  }
+
+  // ---- Load ----
+  async function loadProduits() {
+    document.getElementById('loading').classList.remove('hidden');
+    document.getElementById('table').classList.add('hidden');
+    document.getElementById('empty').classList.add('hidden');
+    try {
+      console.log(`[GET] ${API}/produits`);
+      const res = await fetch(`${API}/produits`);
+      const data = await res.json();
+      console.log(`[GET] ← ${data.length} produit(s)`, data);
+      renderTable(data);
+      updateStats(data);
+    } catch (err) {
+      console.error('[GET] Erreur chargement produits', err);
+      showToast('Impossible de joindre l\'API', false);
+      document.getElementById('loading').classList.add('hidden');
+    }
+  }
+
+  function updateStats(data) {
+    document.getElementById('stat-count').textContent = data.length;
+    const val = data.reduce((s, p) => s + p.prix * p.quantite_stock, 0);
+    document.getElementById('stat-value').textContent = val.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+    const units = data.reduce((s, p) => s + p.quantite_stock, 0);
+    document.getElementById('stat-units').textContent = units.toLocaleString('fr-FR');
+  }
+
+  function renderTable(data) {
+    document.getElementById('loading').classList.add('hidden');
+    if (data.length === 0) {
+      document.getElementById('empty').classList.remove('hidden');
+      return;
+    }
+    const tbody = document.getElementById('tbody');
+    tbody.innerHTML = data.map(p => `
+      <tr class="hover:bg-gray-50 transition-colors group">
+        <td class="px-6 py-4 text-gray-400 font-mono text-xs">${p.id}</td>
+        <td class="px-6 py-4 font-semibold text-gray-900">${esc(p.nom)}</td>
+        <td class="px-6 py-4 text-gray-500 max-w-xs truncate" title="${esc(p.description)}">${esc(p.description)}</td>
+        <td class="px-6 py-4 text-right font-medium text-gray-900">${p.prix.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}</td>
+        <td class="px-6 py-4 text-right">
+          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${p.quantite_stock === 0 ? 'bg-red-100 text-red-700' : p.quantite_stock < 5 ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}">
+            ${p.quantite_stock}
+          </span>
+        </td>
+        <td class="px-6 py-4 text-right">
+          <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button onclick='openModal(${JSON.stringify(p)})' class="p-1.5 rounded-lg text-gray-400 hover:text-brand-500 hover:bg-brand-50 transition-colors" title="Modifier">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+              </svg>
+            </button>
+            <button onclick="askDelete(${p.id}, '${esc(p.nom)}')" class="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Supprimer">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+    document.getElementById('table').classList.remove('hidden');
+  }
+
+  function esc(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ---- Modal ----
+  function openModal(produit = null) {
+    document.getElementById('edit-id').value = produit ? produit.id : '';
+    document.getElementById('modal-title').textContent = produit ? 'Modifier le produit' : 'Nouveau produit';
+    document.getElementById('submit-btn').textContent = produit ? 'Enregistrer les modifications' : 'Créer le produit';
+    document.getElementById('f-nom').value = produit ? produit.nom : '';
+    document.getElementById('f-desc').value = produit ? produit.description : '';
+    document.getElementById('f-prix').value = produit ? produit.prix : '';
+    document.getElementById('f-stock').value = produit ? produit.quantite_stock : '';
+    document.getElementById('modal').classList.remove('hidden');
+    setTimeout(() => document.getElementById('f-nom').focus(), 50);
+  }
+
+  function closeModal() {
+    document.getElementById('modal').classList.add('hidden');
+    document.getElementById('form').reset();
+  }
+
+  // ---- Submit ----
+  async function submitForm(e) {
+    e.preventDefault();
+    const id = document.getElementById('edit-id').value;
+    const body = {
+      nom: document.getElementById('f-nom').value.trim(),
+      description: document.getElementById('f-desc').value.trim(),
+      prix: parseFloat(document.getElementById('f-prix').value),
+      quantite_stock: parseInt(document.getElementById('f-stock').value),
+    };
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'Enregistrement…';
+    try {
+      const url = id ? `${API}/produits/${id}` : `${API}/produits`;
+      const method = id ? 'PUT' : 'POST';
+      console.log(`[${method}] ${url}`, body);
+      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Erreur serveur');
+      }
+      const result = await res.json();
+      console.log(`[${method}] ← ${res.status}`, result);
+      closeModal();
+      showToast(id ? 'Produit modifié avec succès' : 'Produit créé avec succès');
+      loadProduits();
+    } catch (err) {
+      console.error(`[${id ? 'PUT' : 'POST'}] Erreur`, err.message);
+      showToast(err.message, false);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = id ? 'Enregistrer les modifications' : 'Créer le produit';
+    }
+  }
+
+  // ---- Delete ----
+  function askDelete(id, nom) {
+    deleteTargetId = id;
+    document.getElementById('confirm-name').textContent = `"${nom}" sera définitivement supprimé.`;
+    document.getElementById('confirm-modal').classList.remove('hidden');
+  }
+
+  function closeConfirm() {
+    deleteTargetId = null;
+    document.getElementById('confirm-modal').classList.add('hidden');
+  }
+
+  async function confirmDelete() {
+    if (!deleteTargetId) return;
+    try {
+      console.log(`[DELETE] ${API}/produits/${deleteTargetId}`);
+      const res = await fetch(`${API}/produits/${deleteTargetId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Erreur lors de la suppression');
+      const result = await res.json();
+      console.log(`[DELETE] ← ${res.status}`, result);
+      closeConfirm();
+      showToast('Produit supprimé');
+      loadProduits();
+    } catch (err) {
+      console.error(`[DELETE] Erreur produit #${deleteTargetId}`, err.message);
+      showToast(err.message, false);
+    }
+  }
+
+  // ---- Keyboard ----
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeModal(); closeConfirm(); }
+  });
+
+  loadProduits();
+</script>
+</body>
+</html>
