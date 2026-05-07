@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # API CRUD Produits
 
 ## Description
@@ -142,3 +143,7 @@ L’API vérifie automatiquement :
 ## Auteur
 
 Projet réalisé dans le cadre d’un TP DevOps CI/CD.
+
+# integration-continu
+Création d'une application DevOps complète autour d’une API de gestion de produits.
+
