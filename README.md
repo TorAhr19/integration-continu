@@ -1,58 +1,78 @@
-<<<<<<< HEAD
-# API CRUD Produits
+# API CRUD Produits — TP DevOps CI/CD
 
 ## Description
 
-Cette application est une API REST développée avec FastAPI.
-Elle permet de gérer des produits avec les opérations CRUD :
+Application backend Python (FastAPI) de gestion de produits avec une chaîne CI/CD complète intégrant Jenkins et SonarQube.
 
+**Opérations CRUD disponibles :**
 - Créer un produit
-- Afficher les produits
+- Afficher tous les produits
+- Afficher un produit par ID
 - Modifier un produit
 - Supprimer un produit
-
-Le projet a été réalisé dans le cadre d’un TP DevOps CI/CD avec Jenkins et SonarQube.
 
 ---
 
 ## Technologies utilisées
 
-- Python 3
-- FastAPI
-- Uvicorn
+| Rôle | Outil |
+|------|-------|
+| Framework API | FastAPI |
+| Serveur ASGI | Uvicorn |
+| Validation données | Pydantic |
+| Tests | pytest |
+| Couverture | coverage.py |
+| Complexité | Radon |
+| Linting | Pylint |
+| CI/CD | Jenkins |
+| Analyse qualité | SonarQube |
 
 ---
 
-## Installation du projet
+## Structure du projet
 
-### Cloner le projet
+```
+integration-continu/
+│
+├── app/
+│   ├── __init__.py
+│   ├── main.py          # Routes FastAPI (CRUD)
+│   └── schemas.py       # Modèles Pydantic
+│
+├── tests/
+│   └── test_products.py # Tests unitaires et d'intégration
+│
+├── Jenkinsfile          # Pipeline CI/CD Jenkins
+├── sonar-project.properties  # Configuration SonarQube
+├── requirements.txt     # Dépendances Python
+└── README.md
+```
+
+---
+
+## Installation
+
+### 1. Cloner le projet
 
 ```bash
 git clone <url-du-repo>
-cd api-produits
+cd integration-continu
 ```
 
-### Créer un environnement virtuel
+### 2. Créer et activer l'environnement virtuel
 
 ```bash
-python -m venv venv
-```
+# Créer
+python3 -m venv venv
 
-### Activer l’environnement
+# Activer (Linux/Mac)
+source venv/bin/activate
 
-#### Windows
-
-```bash
+# Activer (Windows)
 venv\Scripts\activate
 ```
 
-#### Linux / Mac
-
-```bash
-source venv/bin/activate
-```
-
-### Installer les dépendances
+### 3. Installer les dépendances
 
 ```bash
 pip install -r requirements.txt
@@ -66,43 +86,24 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-Le serveur démarre sur :
+Serveur disponible sur : `http://127.0.0.1:8000`
 
-```text
-http://127.0.0.1:8000
-```
+Documentation Swagger : `http://127.0.0.1:8000/docs`
 
 ---
 
-## Documentation Swagger
+## Routes API
 
-FastAPI génère automatiquement une documentation Swagger.
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| GET | `/` | Message d'accueil |
+| GET | `/produits` | Lister tous les produits |
+| GET | `/produits/{id}` | Afficher un produit |
+| POST | `/produits` | Créer un produit |
+| PUT | `/produits/{id}` | Modifier un produit |
+| DELETE | `/produits/{id}` | Supprimer un produit |
 
-Accessible à l’adresse :
-
-```text
-http://127.0.0.1:8000/docs
-```
-
----
-
-## Structure du projet
-
-```text
-api-produits/
-│
-├── app/
-│   ├── __init__.py
-│   ├── main.py
-│   └── schemas.py
-│
-├── requirements.txt
-└── README.md
-```
-
----
-
-## Modèle Produit
+### Modèle Produit
 
 ```json
 {
@@ -114,36 +115,95 @@ api-produits/
 }
 ```
 
----
+### Règles de validation
 
-## Routes API
-
-| Méthode | Endpoint | Description |
-|---|---|---|
-| GET | / | Accueil API |
-| GET | /produits | Afficher tous les produits |
-| GET | /produits/{id} | Afficher un produit |
-| POST | /produits | Créer un produit |
-| PUT | /produits/{id} | Modifier un produit |
-| DELETE | /produits/{id} | Supprimer un produit |
+- `nom` : 2 à 100 caractères
+- `description` : 5 à 255 caractères
+- `prix` : strictement supérieur à 0
+- `quantite_stock` : positif ou nul
 
 ---
 
-## Validation des données
+## Lancer les tests
 
-L’API vérifie automatiquement :
+```bash
+# Tests simples
+pytest tests/ -v
 
-- nom minimum 2 caractères
-- description minimum 5 caractères
-- prix supérieur à 0
-- quantité en stock positive ou nulle
+# Tests avec rapport de couverture
+pytest tests/ --cov=app --cov-report=term-missing -v
+
+# Générer le rapport XML (pour SonarQube)
+pytest tests/ --cov=app --cov-report=xml:coverage.xml -v
+```
+
+### Complexité avec Radon
+
+```bash
+# Complexité cyclomatique
+radon cc app/ -s -a
+
+# Indice de maintenabilité
+radon mi app/ -s
+```
 
 ---
 
-## Auteur
+## Pipeline CI/CD Jenkins
 
-Projet réalisé dans le cadre d’un TP DevOps CI/CD.
+### Présentation
 
-# integration-continu
-Création d'une application DevOps complète autour d’une API de gestion de produits.
+La pipeline Jenkins automatise l'ensemble du cycle de contrôle qualité à chaque push sur le dépôt. Elle est définie dans le fichier `Jenkinsfile` à la racine du projet.
 
+### Étapes de la pipeline
+
+```
+Checkout → Installation → Linting → Tests+Coverage → Vérification 80% → Radon → SonarQube → Quality Gate
+```
+
+| Étape | Outil | Description |
+|-------|-------|-------------|
+| **Installation des dépendances** | pip | Crée le venv et installe tous les packages de `requirements.txt` |
+| **Linting** | Pylint | Analyse statique du style et des erreurs de code dans `app/` |
+| **Tests et couverture** | pytest + pytest-cov | Exécute tous les tests et génère `coverage.xml` et `test-results.xml` |
+| **Vérification couverture ≥ 80%** | coverage.py | Fait échouer le build si la couverture est inférieure à 80% |
+| **Complexité Radon** | Radon | Calcule la complexité cyclomatique et l'indice de maintenabilité |
+| **Analyse SonarQube** | sonar-scanner | Envoie le code et les métriques vers SonarQube |
+| **Quality Gate** | SonarQube | Bloque le pipeline si les critères de qualité SonarQube ne sont pas atteints |
+
+### Prérequis Jenkins
+
+1. **Plugins Jenkins requis :**
+   - Pipeline
+   - SonarQube Scanner
+   - JUnit
+
+2. **Credentials à configurer dans Jenkins :**
+   - `sonar-token` : token d'authentification SonarQube (type "Secret text")
+
+3. **Serveur SonarQube à déclarer dans Jenkins :**
+   - Aller dans *Manage Jenkins → Configure System → SonarQube servers*
+   - Nom : `SonarQube`
+   - URL : `http://<ip-vm-sonarqube>:9000`
+
+### Configuration SonarQube (`sonar-project.properties`)
+
+```properties
+sonar.projectKey=api-crud-produits
+sonar.projectName=API CRUD Produits
+sonar.sources=app
+sonar.tests=tests
+sonar.python.coverage.reportPaths=coverage.xml
+```
+
+---
+
+## Répartition du travail
+
+Le travail a été réparti en trois rôles complémentaires :
+
+| Membre | Rôle | Mission principale |
+|--------|------|--------------------|
+| Personne 1 | Développeur Backend | API CRUD produits (FastAPI) |
+| Personne 2 | QA / Tests | pytest, coverage.py, Radon |
+| Personne 3 | DevOps | Jenkins, SonarQube, pipeline CI/CD |
